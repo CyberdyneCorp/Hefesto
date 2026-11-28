@@ -255,13 +255,14 @@ diag::Outcome<std::vector<OverlayRecord>> read_res_overlay(cell::LookupContext& 
   }
   std::vector<OverlayRecord> out;
   detail::LineReader reader{text.value(), options.limits.max_line_bytes};
-  while (const auto line = reader.next()) {
-    if (line->too_long) {
-      return diag::make_native(detail::codes::kLimit, *path + ", line " + std::to_string(line->number) +
+  detail::Line line;
+  while (reader.next(line)) {
+    if (line.too_long) {
+      return diag::make_native(detail::codes::kLimit, *path + ", line " + std::to_string(line.number) +
                                                           ": line longer than " +
                                                           std::to_string(options.limits.max_line_bytes) + " bytes");
     }
-    out.push_back(OverlayRecord{line->tokens, line->number});
+    out.push_back(OverlayRecord{std::vector<std::string>(line.tokens.begin(), line.tokens.end()), line.number});
   }
   return out;
 }

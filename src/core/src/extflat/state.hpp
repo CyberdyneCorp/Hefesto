@@ -66,6 +66,10 @@ struct ReadState {
   std::uint32_t line = 0;                    // efReadLineNum
 
   std::optional<std::string> selected_style;
+  /// ReadOptions::style_units' answer per style name, asked once per read:
+  /// the lookup selects (and copies) the whole style, and every file of a
+  /// library names the same one.
+  std::map<std::string, std::optional<float>, std::less<>> style_units_seen;
   std::vector<FileStamp> stamps;
 
   // M7: the extflat globals the netlisters read.

@@ -182,56 +182,72 @@ std::string_view LineReader::physical_line() {
   return content;
 }
 
-std::optional<std::string> LineReader::logical_line() {
-  std::string line;
+bool LineReader::logical_line(std::string_view& out) {
+  joined_.clear();
   too_long_ = false;
+  bool joining = false;
   for (;;) {
     if (pos_ >= text_.size()) {
-      return std::nullopt;  // fgets() == NULL, even inside a continuation
+      return false;  // fgets() == NULL, even inside a continuation
     }
     const std::string_view content = physical_line();
-    if (!too_long_ && line.size() + content.size() > max_line_bytes_) {
+    const bool continues = !content.empty() && content.back() == '\\';
+    if (!too_long_ && joined_.size() + content.size() > max_line_bytes_) {
       too_long_ = true;
-      line.clear();
+      joined_.clear();
+    }
+    if (!joining && !continues) {
+      out = too_long_ ? std::string_view{} : content;  // one physical line: no copy
+      return true;
     }
     if (!too_long_) {
-      line.append(content);
+      joined_.append(content);
     }
-    if (content.empty() || content.back() != '\\') {
-      return line;
+    if (!continues) {
+      out = joined_;
+      return true;
     }
     if (!too_long_) {
-      line.pop_back();  // the backslash is overwritten by the next line
+      joined_.pop_back();  // the backslash is overwritten by the next line
     }
+    joining = true;
   }
 }
 
-std::optional<Line> LineReader::next() {
-  for (;;) {
-    std::optional<std::string> logical = logical_line();
-    if (!logical) {
-      return std::nullopt;
-    }
+bool LineReader::next(Line& out) {
+  std::string_view logical;
+  while (logical_line(logical)) {
+    out.number = line_number_;
+    out.too_long = too_long_;
+    out.tokens.clear();
     if (too_long_) {
-      return Line{{}, line_number_, true};
+      return true;
     }
-    if (!logical->empty() && logical->front() == '#') {
+    if (!logical.empty() && logical.front() == '#') {
       continue;
     }
-    std::vector<std::string> tokens = tokenize(*logical);
-    if (!tokens.empty()) {
-      return Line{std::move(tokens), line_number_, false};
+    tokenize_into(logical, storage_, out.tokens);
+    if (!out.tokens.empty()) {
+      return true;
     }
   }
+  return false;
+}
+
+std::optional<LineReader::OwnedLine> LineReader::next() {
+  Line line;
+  if (!next(line)) {
+    return std::nullopt;
+  }
+  return OwnedLine{{line.tokens.begin(), line.tokens.end()}, line.number, line.too_long};
 }
 
 namespace {
 
-// The characters of one token from `get` (efReadLine's inner loop); `get`
-// is left on the terminating character.
-std::string scan_token(std::string_view line, std::size_t& get) {
+// The characters of one token from `get` (efReadLine's inner loop),
+// appended to `storage`; `get` is left on the terminating character.
+void scan_token(std::string_view line, std::size_t& get, std::string& storage) {
   const std::size_t n = line.size();
-  std::string token;
   bool inquote = false;
   for (; get < n; ++get) {
     const char c = line[get];
@@ -246,15 +262,16 @@ std::string scan_token(std::string_view line, std::size_t& get) {
       ++get;  // a backslash at the end of the line is dropped
       break;
     }
-    token.push_back(c);
+    storage.push_back(c);
   }
-  return token;
 }
 
 }  // namespace
 
-std::vector<std::string> tokenize(std::string_view line) {
-  std::vector<std::string> tokens;
+void tokenize_into(std::string_view line, std::string& storage, std::vector<std::string_view>& out) {
+  storage.clear();
+  storage.reserve(line.size());  // tokens never outgrow the line: the views stay valid
+  out.clear();
   std::size_t get = 0;
   const std::size_t n = line.size();
   while (get < n) {
@@ -262,16 +279,23 @@ std::vector<std::string> tokenize(std::string_view line) {
       ++get;
     }
     const std::size_t start = get;
-    std::string token = scan_token(line, get);
+    const std::size_t first = storage.size();
+    scan_token(line, get, storage);
     if (get == start) {
       break;
     }
     if (get < n) {
       ++get;  // the terminating character
     }
-    tokens.push_back(std::move(token));
+    out.emplace_back(storage.data() + first, storage.size() - first);
   }
-  return tokens;
+}
+
+std::vector<std::string> tokenize(std::string_view line) {
+  std::string storage;
+  std::vector<std::string_view> views;
+  tokenize_into(line, storage, views);
+  return {views.begin(), views.end()};
 }
 
 }  // namespace hefesto::extflat::detail

@@ -30,7 +30,7 @@ struct NodeRecord {
   bool device_substrate = false;  // isDevSubsnode
   bool ext_node = false;       // isExtNode: a `node`/`substrate` record of the root file
   float cap = 0.0F;            // nodeCap (aF, already scaled)
-  std::span<const std::string> area_perim{};  // the area/perimeter tokens (av, ac)
+  std::span<const std::string_view> area_perim{};  // the area/perimeter tokens (av, ac)
 };
 
 /// efBuildNode.
@@ -49,7 +49,7 @@ void build_equiv(ReadState& st, Def& def, std::string_view name1, std::string_vi
 /// efBuildMerge: records the connection with its capacitance delta (aF,
 /// scaled) and the area/perimeter tokens.
 void build_merge(ReadState& st, Def& def, std::string_view name1, std::string_view name2, float cap,
-                 std::span<const std::string> area_perim);
+                 std::span<const std::string_view> area_perim);
 /// efBuildCap: a coupling of `cap` aF (scaled).
 void build_cap(ReadState& st, Def& def, std::string_view name1, std::string_view name2, float cap);
 /// efBuildResistor: a resistor of `res` mohm.
@@ -59,11 +59,11 @@ void build_use(ReadState& st, Def& def, std::string_view def_name, std::string_v
 /// efBuildDevice: `args` are the tokens after the coordinates; returns
 /// false for "Incomplete terminal description".
 [[nodiscard]] bool build_device(ReadState& st, Def& def, std::uint8_t device_class, std::string_view type,
-                                const db::Rect& r, std::span<const std::string> args);
+                                const db::Rect& r, std::span<const std::string_view> args);
 /// A `device` record of type `Short`: an `equiv` of two terminal names.
-void build_short(ReadState& st, Def& def, std::span<const std::string> args);
+void build_short(ReadState& st, Def& def, std::span<const std::string_view> args);
 /// efBuildDeviceParams.
-void build_device_params(ReadState& st, std::string_view type, std::span<const std::string> args);
+void build_device_params(ReadState& st, std::string_view type, std::span<const std::string_view> args);
 
 /// extDevTable: the class index of a `device` record's class word.
 [[nodiscard]] std::optional<std::uint8_t> device_class(std::string_view word) noexcept;

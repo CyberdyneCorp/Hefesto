@@ -68,7 +68,7 @@ diag::Diagnostic cannot_read(std::string_view name) {
   return diag::make(codes::kCannotRead, "Cannot read extract file " + std::string{name} + ".ext");
 }
 
-int as_int(const std::vector<std::string>& argv, std::size_t i) {
+int as_int(Args argv, std::size_t i) {
   return i < argv.size() ? c_atoi(argv[i]) : 0;
 }
 
@@ -77,8 +77,8 @@ float scaled_cap(std::string_view text, int scale) {
   return static_cast<float>(c_atof(text)) * static_cast<float>(scale);
 }
 
-std::span<const std::string> tail(const std::vector<std::string>& argv, std::size_t from) {
-  return from < argv.size() ? std::span<const std::string>{argv}.subspan(from) : std::span<const std::string>{};
+Args tail(Args argv, std::size_t from) {
+  return from < argv.size() ? argv.subspan(from) : Args{};
 }
 
 // What reading one file produced.
@@ -105,26 +105,26 @@ class FileReader {
   void apply_deferred();
 
  private:
-  void line(const std::vector<std::string>& argv);
-  void record(Key key, const std::vector<std::string>& argv);
-  void connection_record(Key key, const std::vector<std::string>& argv);
-  void header_record(Key key, const std::vector<std::string>& argv);
-  void scale(const std::vector<std::string>& argv);
-  void node(const std::vector<std::string>& argv, bool substrate);
-  void rnode(const std::vector<std::string>& argv);
-  void port(const std::vector<std::string>& argv);
-  void equiv(const std::vector<std::string>& argv);
-  void resistor(const std::vector<std::string>& argv);
-  void resistclasses(const std::vector<std::string>& argv);
-  void tech(const std::vector<std::string>& argv);
-  void style(const std::vector<std::string>& argv);
-  void version(const std::vector<std::string>& argv);
-  void device(const std::vector<std::string>& argv);
-  void fet(const std::vector<std::string>& argv);
-  void attr(const std::vector<std::string>& argv);
-  void use(const std::vector<std::string>& argv);
-  void note_res_name(const std::string& name);
-  db::Rect rect(const std::vector<std::string>& argv, std::size_t first) const;
+  void line(Args argv);
+  void record(Key key, Args argv);
+  void connection_record(Key key, Args argv);
+  void header_record(Key key, Args argv);
+  void scale(Args argv);
+  void node(Args argv, bool substrate);
+  void rnode(Args argv);
+  void port(Args argv);
+  void equiv(Args argv);
+  void resistor(Args argv);
+  void resistclasses(Args argv);
+  void tech(Args argv);
+  void style(Args argv);
+  void version(Args argv);
+  void device(Args argv);
+  void fet(Args argv);
+  void attr(Args argv);
+  void use(Args argv);
+  void note_res_name(std::string_view name);
+  db::Rect rect(Args argv, std::size_t first) const;
 
   ReadState& st_;
   Def& def_;
@@ -138,21 +138,22 @@ class FileReader {
 void FileReader::read(std::string_view text) {
   LineReader reader{text, st_.options.limits.max_line_bytes};
   st_.line = 0;
-  while (const auto l = reader.next()) {
-    st_.line = l->number;
-    if (l->too_long) {
-      st_.fail(codes::kLimit, st_.file + ", line " + std::to_string(l->number) + ": line longer than " +
+  Line l;
+  while (reader.next(l)) {
+    st_.line = l.number;
+    if (l.too_long) {
+      st_.fail(codes::kLimit, st_.file + ", line " + std::to_string(l.number) + ": line longer than " +
                                   std::to_string(st_.options.limits.max_line_bytes) + " bytes");
       return;
     }
-    line(l->tokens);
+    line(l.tokens);
     if (st_.fatal) {
       return;
     }
   }
 }
 
-void FileReader::line(const std::vector<std::string>& argv) {
+void FileReader::line(Args argv) {
   if (argv.size() > kMaxTokens) {
     // Magic's argv[128] overflows here. The line is ignored with a warning
     // every console prints, in both modes (approved 2026-11-21, M6-S8).
@@ -164,24 +165,24 @@ void FileReader::line(const std::vector<std::string>& argv) {
   }
   const auto key = lookup_key(argv[0]);
   if (!key) {
-    st_.read_error("Unrecognized token \"" + argv[0] + "\" (ignored)");
+    st_.read_error("Unrecognized token \"" + std::string{argv[0]} + "\" (ignored)");
     return;
   }
   if (argv.size() < key->min_tokens) {
-    st_.read_error("Not enough tokens for " + argv[0] + " line");
+    st_.read_error("Not enough tokens for " + std::string{argv[0]} + " line");
     return;
   }
   record(key->key, argv);
 }
 
-void FileReader::record(Key key, const std::vector<std::string>& argv) {
+void FileReader::record(Key key, Args argv) {
   switch (key) {
     case Key::node: node(argv, false); break;
     case Key::substrate: node(argv, true); break;
     case Key::rnode: rnode(argv); break;
     case Key::port: port(argv); break;
     case Key::subcap: adjust_subcap(st_, def_, argv[1], scaled_cap(argv[2], cscale_)); break;
-    case Key::killnode: def_.kills.push_back(argv[1]); break;
+    case Key::killnode: def_.kills.emplace_back(argv[1]); break;
     case Key::use: use(argv); break;
     case Key::device: device(argv); break;
     case Key::fet: fet(argv); break;
@@ -193,7 +194,7 @@ void FileReader::record(Key key, const std::vector<std::string>& argv) {
   }
 }
 
-void FileReader::connection_record(Key key, const std::vector<std::string>& argv) {
+void FileReader::connection_record(Key key, Args argv) {
   switch (key) {
     case Key::equiv: equiv(argv); break;
     case Key::merge:
@@ -205,7 +206,7 @@ void FileReader::connection_record(Key key, const std::vector<std::string>& argv
   }
 }
 
-void FileReader::header_record(Key key, const std::vector<std::string>& argv) {
+void FileReader::header_record(Key key, Args argv) {
   switch (key) {
     case Key::scale: scale(argv); break;
     case Key::resistclass: resistclasses(argv); break;
@@ -221,7 +222,7 @@ void FileReader::header_record(Key key, const std::vector<std::string>& argv) {
   }
 }
 
-void FileReader::scale(const std::vector<std::string>& argv) {
+void FileReader::scale(Args argv) {
   rscale_ = c_atoi(argv[1]);
   if (rscale_ == 0) {
     st_.read_error("Bad resistance scaling = 0; reset to 1.");
@@ -255,7 +256,7 @@ void FileReader::scale(const std::vector<std::string>& argv) {
   }
 }
 
-void FileReader::node(const std::vector<std::string>& argv, bool substrate) {
+void FileReader::node(Args argv, bool substrate) {
   // Signed, as Magic's int: a short substrate line (3 to 6 tokens) gives a
   // negative count and the message.
   std::ptrdiff_t ac = static_cast<std::ptrdiff_t>(argv.size()) - 7;
@@ -271,22 +272,22 @@ void FileReader::node(const std::vector<std::string>& argv, bool substrate) {
   if (argv.size() > 6) {
     layer = argv[6];
   }
-  const std::span<const std::string> pa =
-      ac > 0 ? tail(argv, 7).first(static_cast<std::size_t>(ac)) : std::span<const std::string>{};
+  const std::span<const std::string_view> pa =
+      ac > 0 ? tail(argv, 7).first(static_cast<std::size_t>(ac)) : std::span<const std::string_view>{};
   const float cap = argv.size() > 3 ? scaled_cap(argv[3], cscale_) : 0.0F;
   build_node(st_, def_, NodeRecord{argv[1], as_int(argv, 4), as_int(argv, 5), layer, substrate, false, toplevel_, cap, pa});
 }
 
-void FileReader::note_res_name(const std::string& name) {
+void FileReader::note_res_name(std::string_view name) {
   if (st_.res_names) {
-    st_.res_names->insert(name);
+    st_.res_names->emplace(name);
   }
 }
 
 // A port number past the cap fails the read in both modes: the netlisters
 // number ports past the highest one (Magic sizes an array by it), so a
 // hostile number could exhaust memory or overflow (design D21).
-void FileReader::port(const std::vector<std::string>& argv) {
+void FileReader::port(Args argv) {
   const int index = as_int(argv, 2);
   if (index > st_.options.limits.max_port_index) {
     st_.fail(codes::kLimit, st_.file + ", line " + std::to_string(st_.line) + ": port number " + std::to_string(index) +
@@ -297,7 +298,7 @@ void FileReader::port(const std::vector<std::string>& argv) {
   build_port_node(st_, def_, argv[1], index, as_int(argv, 3), as_int(argv, 4), argv[7], toplevel_);
 }
 
-void FileReader::rnode(const std::vector<std::string>& argv) {
+void FileReader::rnode(Args argv) {
   note_res_name(argv[1]);
   // rnode needs 5 tokens but Magic reads the 7th (its layer): a missing
   // coordinate is 0 and a missing layer is none, instead of reading stale
@@ -310,15 +311,15 @@ void FileReader::rnode(const std::vector<std::string>& argv) {
              NodeRecord{argv[1], as_int(argv, 4), as_int(argv, 5), layer, false, false, false, scaled_cap(argv[3], cscale_)});
 }
 
-void FileReader::equiv(const std::vector<std::string>& argv) {
+void FileReader::equiv(Args argv) {
   const bool resist = st_.options.resist_overlay;
   if (resist && !st_.reading_overlay) {
-    deferred_.push_back(DeferredEquiv{argv[1], argv[2]});
+    deferred_.push_back(DeferredEquiv{std::string{argv[1]}, std::string{argv[2]}});
   }
   build_equiv(st_, def_, argv[1], argv[2], resist);
 }
 
-void FileReader::resistor(const std::vector<std::string>& argv) {
+void FileReader::resistor(Args argv) {
   note_res_name(argv[1]);
   note_res_name(argv[2]);
   // Q-NETLIST-12: Magic adds 0.5 mohm, a leftover rounding term.
@@ -327,7 +328,7 @@ void FileReader::resistor(const std::vector<std::string>& argv) {
   build_resistor(st_, def_, argv[1], argv[2], res);
 }
 
-void FileReader::resistclasses(const std::vector<std::string>& argv) {
+void FileReader::resistclasses(Args argv) {
   const std::size_t count = argv.size() - 1;
   if (!st_.resist_classes) {
     st_.resist_classes = count;
@@ -353,47 +354,51 @@ void FileReader::resistclasses(const std::vector<std::string>& argv) {
   }
 }
 
-void FileReader::tech(const std::vector<std::string>& argv) {
+void FileReader::tech(Args argv) {
   const std::string& tech_name = st_.options.tech_name;
   if (tech_name.empty() || argv[1] == tech_name) {
     st_.tech = argv[1];
     return;
   }
   // Layout is loaded, so Magic refuses to switch technology.
-  const std::string text = "Error: .ext file has different technology " + argv[1];
+  const std::string text = "Error: .ext file has different technology " + std::string{argv[1]};
   st_.message(codes::kTechMismatch, text);
   st_.message(codes::kTechMismatch, "Load this technology and repeat.");
   st_.note_failure(diag::make(codes::kTechMismatch, text));
 }
 
-void FileReader::style(const std::vector<std::string>& argv) {
+void FileReader::style(Args argv) {
   if (!st_.options.style_units) {
     st_.style = argv[1];  // the caller knows no styles: no check
     return;
   }
-  if (const auto units = st_.options.style_units(argv[1])) {
+  auto seen = st_.style_units_seen.find(argv[1]);
+  if (seen == st_.style_units_seen.end()) {
+    seen = st_.style_units_seen.emplace(std::string{argv[1]}, st_.options.style_units(argv[1])).first;
+  }
+  if (const auto units = seen->second) {
     st_.units_per_lambda = *units;
     st_.selected_style = argv[1];
     st_.style = argv[1];
     return;
   }
-  st_.message(codes::kUnknownStyle, "Warning:  .ext file style " + argv[1] + " is not known in this technology!");
+  st_.message(codes::kUnknownStyle, "Warning:  .ext file style " + std::string{argv[1]} + " is not known in this technology!");
   st_.style.reset();
 }
 
-void FileReader::version(const std::vector<std::string>& argv) {
+void FileReader::version(Args argv) {
   if (argv[1] != "8.3") {
-    st_.read_error("Cell was extracted using version " + argv[1] + " of the extractor.");
+    st_.read_error("Cell was extracted using version " + std::string{argv[1]} + " of the extractor.");
     st_.read_error("   It should be re-extracted.");
   }
 }
 
-db::Rect FileReader::rect(const std::vector<std::string>& argv, std::size_t first) const {
+db::Rect FileReader::rect(Args argv, std::size_t first) const {
   return db::Rect{scale_coord(st_, as_int(argv, first)), scale_coord(st_, as_int(argv, first + 1)),
                   scale_coord(st_, as_int(argv, first + 2)), scale_coord(st_, as_int(argv, first + 3))};
 }
 
-void FileReader::device(const std::vector<std::string>& argv) {
+void FileReader::device(Args argv) {
   // A `vsource` record parses with the default rule (its value, then the
   // terminals) in both modes; Magic sets no token count for the class but
   // never reads it here (Q-NETLIST-51).
@@ -413,17 +418,17 @@ void FileReader::device(const std::vector<std::string>& argv) {
   }
 }
 
-void FileReader::fet(const std::vector<std::string>& argv) {
+void FileReader::fet(Args argv) {
   if (!build_device(st_, def_, kDevFet, argv[1], rect(argv, 2), tail(argv, 6))) {
     st_.read_error("Incomplete terminal description for fet");
   }
 }
 
-void FileReader::attr(const std::vector<std::string>& argv) {
+void FileReader::attr(Args argv) {
   build_attr(st_, def_, argv[1], rect(argv, 2), argv[6], argv[7]);
 }
 
-void FileReader::use(const std::vector<std::string>& argv) {
+void FileReader::use(Args argv) {
   const Transform t{as_int(argv, 3), as_int(argv, 4), as_int(argv, 5),
                     as_int(argv, 6), as_int(argv, 7), as_int(argv, 8)};
   build_use(st_, def_, argv[1], argv[2], t);

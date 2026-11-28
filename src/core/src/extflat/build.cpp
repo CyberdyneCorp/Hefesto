@@ -59,7 +59,7 @@ std::int32_t scale_area(const ReadState& st, std::int32_t v) noexcept {
 
 // The area/perimeter pairs of a node record: one per resistance class
 // while two tokens remain, the rest zero.
-std::vector<PerimArea> node_perim_area(const ReadState& st, std::span<const std::string> av) {
+std::vector<PerimArea> node_perim_area(const ReadState& st, std::span<const std::string_view> av) {
   std::vector<PerimArea> pa(st.classes());
   for (std::size_t n = 0; n < pa.size() && 2 * n + 1 < av.size(); ++n) {
     pa[n] = PerimArea{c_atoi(av[2 * n]), c_atoi(av[2 * n + 1])};
@@ -404,7 +404,7 @@ bool primary_key(std::string_view token, std::size_t eq) noexcept {
 }
 
 // One declared parameter of efBuildDevice's parameter loop.
-void apply_param(const ReadState& st, const std::string& token, std::size_t eq, DevScratch& t) {
+void apply_param(const ReadState& st, std::string_view token, std::size_t eq, DevScratch& t) {
   const std::string_view value = std::string_view{token}.substr(eq + 1);
   const bool primary = primary_key(token, eq);
   switch (token[0]) {
@@ -421,7 +421,7 @@ void apply_param(const ReadState& st, const std::string& token, std::size_t eq, 
     case 'l':
     case 'w': {
       if (!primary) {
-        t.params.insert(t.params.begin(), token);
+        t.params.emplace(t.params.begin(), token);
         break;
       }
       (token[0] == 'l' ? t.length : t.width) = scale_coord(st, c_atoi(value));
@@ -434,12 +434,12 @@ void apply_param(const ReadState& st, const std::string& token, std::size_t eq, 
 }
 
 // efBuildDevice's parameter loop: returns the first token after them.
-std::size_t parse_params(const ReadState& st, std::string_view type, std::span<const std::string> args,
+std::size_t parse_params(const ReadState& st, std::string_view type, std::span<const std::string_view> args,
                          std::size_t termstart, DevScratch& t) {
   // Magic reads past the tokens when every remaining one holds '='; the
   // reader stops there.
   while (termstart < args.size()) {
-    const std::string& token = args[termstart];
+    const std::string_view token = args[termstart];
     const std::size_t eq = token.find('=');
     if (eq == std::string::npos) {
       break;
@@ -447,7 +447,7 @@ std::size_t parse_params(const ReadState& st, std::string_view type, std::span<c
     if (declared(st, type, std::string_view{token}.substr(0, eq))) {
       apply_param(st, token, eq, t);
     } else {
-      t.params.insert(t.params.begin(), token);
+      t.params.emplace(t.params.begin(), token);
     }
     ++termstart;
   }
@@ -511,9 +511,9 @@ bool compatible_duplicate(ReadState& st, const Device& old, std::uint8_t cls, st
 
 // The class values of a resistor or capacitor (efBuildDevice): L and W,
 // or the value, or the error.
-void rc_values(ReadState& st, Device& dev, bool has_model, std::span<const std::string> args) {
-  const std::string& a0 = args[0];
-  const std::string& a1 = args.size() > 1 ? args[1] : a0;
+void rc_values(ReadState& st, Device& dev, bool has_model, std::span<const std::string_view> args) {
+  const std::string_view a0 = args[0];
+  const std::string_view a1 = args.size() > 1 ? args[1] : a0;
   if (has_model && str_is_int(a0) && str_is_int(a1)) {
     dev.length = c_atoi(a0);
     dev.width = c_atoi(a1);
@@ -524,18 +524,18 @@ void rc_values(ReadState& st, Device& dev, bool has_model, std::span<const std::
     return;
   }
   if (has_model) {
-    st.read_error("Error: expected L and W, got " + a0 + " " + a1);
+    st.read_error("Error: expected L and W, got " + std::string{a0} + " " + std::string{a1});
     dev.length = 0;
     dev.width = 0;
   } else {
     st.read_error(std::string{"Error: expected "} + (dev.device_class == kRes ? "resistance" : "capacitance") +
-                  " value, got " + a0);
+                  " value, got " + std::string{a0});
     (dev.device_class == kRes ? dev.res : dev.cap) = 0.0F;
   }
 }
 
 // The fixed values of a new device (efBuildDevice's class switch).
-void class_values(ReadState& st, Device& dev, bool has_model, std::span<const std::string> args) {
+void class_values(ReadState& st, Device& dev, bool has_model, std::span<const std::string_view> args) {
   switch (dev.device_class) {
     case kFet:
       dev.area = args.empty() ? 0 : c_atoi(args[0]);
@@ -578,7 +578,7 @@ Device new_device(std::uint8_t cls, std::string_view type, const db::Rect& r, st
 // The substrate given in the fixed fields (efBuildDevice after the device
 // table check).
 std::uint32_t fixed_substrate(ReadState& st, Def& def, std::uint8_t cls, std::size_t termstart,
-                              std::span<const std::string> args, std::uint32_t subs) {
+                              std::span<const std::string_view> args, std::uint32_t subs) {
   if (args.size() <= 2) {
     return subs;
   }
@@ -596,7 +596,7 @@ std::uint32_t fixed_substrate(ReadState& st, Def& def, std::uint8_t cls, std::si
 // Finds or creates the device of the table key; nullptr for an
 // incompatible duplicate.
 Device* place_device(ReadState& st, Def& def, std::uint8_t cls, std::string_view type, const db::Rect& r,
-                     std::size_t terminals, DevScratch& t, std::span<const std::string> args) {
+                     std::size_t terminals, DevScratch& t, std::span<const std::string_view> args) {
   std::int32_t ttype = 0;
   const std::string key = device_table_key(st, def, type, r, ttype);
   auto& entry = def.dev_table.find_or_insert(key);
@@ -614,7 +614,7 @@ Device* place_device(ReadState& st, Def& def, std::uint8_t cls, std::string_view
 }
 
 bool build_device_impl(ReadState& st, Def& def, std::uint8_t cls, std::string_view type, const db::Rect& r,
-                       std::span<const std::string> args, std::uint32_t term0);
+                       std::span<const std::string_view> args, std::uint32_t term0);
 
 // Q-NETLIST-31 and Q-NETLIST-60 with magic-compat OFF: a shorted-port
 // device's own terminal-0 node, as efBuildDevNode would create it, named
@@ -635,8 +635,7 @@ std::uint32_t anonymous_short_node(ReadState& st, Def& def) {
 // Terminal 0 is the cell's shared node `dummy` with magic-compat ON, as in
 // Magic, and a node of its own with it OFF (Q-NETLIST-31).
 void build_short_device(ReadState& st, Def& def, std::string_view name1, std::string_view name2) {
-  const std::array<std::string, 10> argv{"0.0", "dummy", "0", "0", std::string{name1}, "0", "0",
-                                         std::string{name2}, "0", "0"};
+  const std::array<std::string_view, 10> argv{"0.0", "dummy", "0", "0", name1, "0", "0", name2, "0", "0"};
   const std::uint8_t cls = st.options.shorts == ReadOptions::PortShorts::resistor ? kRes : kVsource;
   const std::uint32_t term0 = st.magic_compat() ? kNil : anonymous_short_node(st, def);
   (void)build_device_impl(st, def, cls, "None", db::Rect{}, argv, term0);
@@ -786,7 +785,7 @@ void build_equiv(ReadState& st, Def& def, std::string_view name1, std::string_vi
 }
 
 void build_merge(ReadState& st, Def& def, std::string_view name1, std::string_view name2, float cap,
-                 std::span<const std::string> area_perim) {
+                 std::span<const std::string_view> area_perim) {
   if (before_uq(name1) != before_uq(name2) && shorts_on(st)) {
     const std::uint32_t nn1 = lookup_name(def, name1);
     const std::uint32_t nn2 = lookup_name(def, name2);
@@ -852,7 +851,7 @@ namespace {
 // efBuildDevice; `term0`, when set, is terminal 0's node instead of the
 // one its name designates.
 bool build_device_impl(ReadState& st, Def& def, std::uint8_t cls, std::string_view type, const db::Rect& r,
-                       std::span<const std::string> args, std::uint32_t term0) {
+                       std::span<const std::string_view> args, std::uint32_t term0) {
   DevScratch t;
   std::size_t termstart = parse_params(st, type, args, terminal_start(cls, type != "None"), t);
   if (termstart > args.size()) {
@@ -876,7 +875,7 @@ bool build_device_impl(ReadState& st, Def& def, std::uint8_t cls, std::string_vi
   const std::uint32_t subs = fixed_substrate(st, def, cls, termstart, args, t.subs);
   def.devices[index].subs = subs;
   for (std::size_t n = 0; n < terminals; ++n) {
-    const std::string& attrs = args[termstart + 3 * n + 2];
+    const std::string_view attrs = args[termstart + 3 * n + 2];
     DevTerm term;
     term.node = (n == 0 && term0 != kNil) ? term0 : build_dev_node(st, def, args[termstart + 3 * n], false);
     term.length = c_atoi(args[termstart + 3 * n + 1]);
@@ -891,11 +890,11 @@ bool build_device_impl(ReadState& st, Def& def, std::uint8_t cls, std::string_vi
 }  // namespace
 
 bool build_device(ReadState& st, Def& def, std::uint8_t cls, std::string_view type, const db::Rect& r,
-                  std::span<const std::string> args) {
+                  std::span<const std::string_view> args) {
   return build_device_impl(st, def, cls, type, r, args, kNil);
 }
 
-void build_short(ReadState& st, Def& def, std::span<const std::string> args) {
+void build_short(ReadState& st, Def& def, std::span<const std::string_view> args) {
   std::size_t start = 0;
   while (start < args.size() && args[start].find('=') != std::string::npos) {
     ++start;
@@ -943,7 +942,7 @@ DevParam parse_declared_param(std::string_view type, std::string_view token, std
 
 }  // namespace
 
-void build_device_params(ReadState& st, std::string_view type, std::span<const std::string> args) {
+void build_device_params(ReadState& st, std::string_view type, std::span<const std::string_view> args) {
   auto& list = st.params[std::string{type}];
   if (!list.empty()) {
     return;  // the first declaration with a parameter wins
@@ -951,7 +950,7 @@ void build_device_params(ReadState& st, std::string_view type, std::span<const s
   for (std::size_t n = 0; n < args.size(); ++n) {
     const std::size_t eq = args[n].find('=');
     if (eq == std::string::npos) {
-      st.read_error("Bad parameter assignment \"" + args[n] + "\" for device \"" + std::string{type} + "\"");
+      st.read_error("Bad parameter assignment \"" + std::string{args[n]} + "\" for device \"" + std::string{type} + "\"");
       continue;
     }
     // Prepended: the list is in reverse token order (Q-NETLIST-9).

@@ -15,6 +15,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -81,9 +82,13 @@ struct KeyInfo {
   return c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r';
 }
 
-/// One logical line split into tokens (efReadLine).
+/// The tokens of one line, as the record readers take them.
+using Args = std::span<const std::string_view>;
+
+/// One logical line split into tokens (efReadLine). The tokens view the
+/// reader's buffer: they stay valid until its next call.
 struct Line {
-  std::vector<std::string> tokens;
+  std::vector<std::string_view> tokens;
   std::uint32_t number = 0;  // the last physical line read (efReadLineNum)
   bool too_long = false;     // the logical line passed ReadLimits::max_line_bytes
 };
@@ -94,13 +99,22 @@ class LineReader {
   LineReader(std::string_view text, std::size_t max_line_bytes) noexcept
       : text_(text), max_line_bytes_(max_line_bytes) {}
 
-  /// The next non-empty, non-comment logical line; nullopt at the end of
-  /// the file (a continuation cut by the end of file is dropped, as fgets
-  /// returning NULL ends efReadLine).
-  [[nodiscard]] std::optional<Line> next();
+  /// The next non-empty, non-comment logical line into `out` (its buffers
+  /// are reused); false at the end of the file (a continuation cut by the
+  /// end of file is dropped, as fgets returning NULL ends efReadLine).
+  [[nodiscard]] bool next(Line& out);
+
+  /// A line with owned tokens (for readers outside the netlist hot path).
+  struct OwnedLine {
+    std::vector<std::string> tokens;
+    std::uint32_t number = 0;
+    bool too_long = false;
+  };
+  /// next(Line&) with owned tokens; nullopt at the end of the file.
+  [[nodiscard]] std::optional<OwnedLine> next();
 
  private:
-  [[nodiscard]] std::optional<std::string> logical_line();
+  [[nodiscard]] bool logical_line(std::string_view& out);
   [[nodiscard]] std::string_view physical_line();
 
   std::string_view text_;
@@ -108,12 +122,17 @@ class LineReader {
   std::uint32_t line_number_ = 0;
   std::size_t max_line_bytes_;
   bool too_long_ = false;
+  std::string joined_;   // a logical line continued over physical lines
+  std::string storage_;  // the characters of the current tokens
 };
 
 /// The tokenizer of efReadLine on one logical line: white space separates
 /// tokens, double quotes group (and are removed), a backslash is copied
 /// (and dropped at the end of the line). The token count is not capped
-/// here; the reader rejects lines over 128 tokens.
+/// here; the reader rejects lines over 128 tokens. The characters go to
+/// `storage` and `out` receives views of them (both are cleared first).
+void tokenize_into(std::string_view line, std::string& storage, std::vector<std::string_view>& out);
+/// tokenize_into with owned tokens.
 [[nodiscard]] std::vector<std::string> tokenize(std::string_view line);
 
 }  // namespace hefesto::extflat::detail
